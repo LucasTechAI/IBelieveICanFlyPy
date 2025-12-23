@@ -1,5 +1,5 @@
-from pandas import DataFrame, read_csv, get_dummies, cut, concat
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
+from pandas import DataFrame, read_csv, cut, concat
 from logging import getLogger, basicConfig, INFO
 from typing import List, Optional
 from numpy import pi, sin, cos
@@ -221,7 +221,7 @@ class FeatureEngineer:
             return "spring"
         elif 172 <= day < 266:  # ~21 jun - ~22 set
             return "summer"
-        else:  # ~23 set - ~20 dez
+        elif 266 <= day < 355:
             return "autumn"
 
     def create_season(self, col: str = "DAY_OF_YEAR") -> "FeatureEngineer":
@@ -248,12 +248,43 @@ class FeatureEngineer:
         Returns:
             self
         """
-        dummies = get_dummies(self.df[col], prefix=col, drop_first=drop_first)
-        self.df = concat([self.df, dummies], axis=1)
+        if self.df is None:
+            raise ValueError(
+                "DataFrame does not exist. Load data before applying transformations."
+            )
+        
+        if col not in self.df.columns:
+            raise ValueError(f"Column '{col}' not found in DataFrame.")
+        
+        # Usar OneHotEncoder do sklearn
+        encoder = OneHotEncoder(drop='first' if drop_first else None, sparse_output=False)
+        encoded = encoder.fit_transform(self.df[[col]])
+        
+        # Determinar as categorias corretas baseado no parâmetro drop_first
+        if drop_first:
+            # Se drop_first=True, usar categorias exceto a primeira
+            categories = encoder.categories_[0][1:]
+        else:
+            # Se drop_first=False, usar todas as categorias
+            categories = encoder.categories_[0]
+        print(categories)
+        
+        # Criar DataFrame com as colunas codificadas
+        encoded_df = DataFrame(
+            encoded, 
+            columns=[f"{col}_{cat}" for cat in categories],
+            index=self.df.index
+        )
+        
+        # Armazenar o encoder para uso futuro
+        self.encoders[col] = encoder
+        
+        # Concatenar com o DataFrame original e remover a coluna original
+        self.df = concat([self.df, encoded_df], axis=1)
         self.df.drop(columns=[col], inplace=True)
 
         logger.info(
-            f"-> One-hot encoding applied: {col} → {len(dummies.columns)} columns"
+            f"-> One-hot encoding applied: {col} → {len(encoded_df.columns)} columns: {encoded_df.columns.tolist()}"
         )
         return self
 

@@ -239,12 +239,11 @@ class FeatureEngineer:
         logger.info(f"-> Season feature created: SEASON")
         return self
 
-    def one_hot_encode(self, col: str, drop_first: bool = True) -> "FeatureEngineer":
+    def one_hot_encode(self, col: str) -> "FeatureEngineer":
         """
         Applies one-hot encoding to a categorical column.
         Args:
             col: Name of the column to encode
-            drop_first: Whether to drop the first category to avoid multicollinearity
         Returns:
             self
         """
@@ -256,30 +255,20 @@ class FeatureEngineer:
         if col not in self.df.columns:
             raise ValueError(f"Column '{col}' not found in DataFrame.")
         
-        # Usar OneHotEncoder do sklearn
-        encoder = OneHotEncoder(drop='first' if drop_first else None, sparse_output=False)
+        encoder = OneHotEncoder(sparse_output=False)
         encoded = encoder.fit_transform(self.df[[col]])
+
+        feature_names = encoder.get_feature_names_out([col])
         
-        # Determinar as categorias corretas baseado no parâmetro drop_first
-        if drop_first:
-            # Se drop_first=True, usar categorias exceto a primeira
-            categories = encoder.categories_[0][1:]
-        else:
-            # Se drop_first=False, usar todas as categorias
-            categories = encoder.categories_[0]
-        print(categories)
-        
-        # Criar DataFrame com as colunas codificadas
+        logger.info(f"Categories found: {encoder.categories_[0]}")
         encoded_df = DataFrame(
             encoded, 
-            columns=[f"{col}_{cat}" for cat in categories],
+            columns=feature_names,
             index=self.df.index
         )
         
-        # Armazenar o encoder para uso futuro
         self.encoders[col] = encoder
         
-        # Concatenar com o DataFrame original e remover a coluna original
         self.df = concat([self.df, encoded_df], axis=1)
         self.df.drop(columns=[col], inplace=True)
 

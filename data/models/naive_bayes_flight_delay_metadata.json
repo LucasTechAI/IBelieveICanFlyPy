@@ -1,0 +1,42 @@
+{
+    "model_name": "naive_bayes_flight_delay",
+    "feature_columns": [
+        "DEPARTURE_DELAY",
+        "TAXI_OUT",
+        "WHEELS_OFF",
+        "ORIGIN_AIRPORT_LATITUDE",
+        "ORIGIN_AIRPORT_LONGITUDE",
+        "DESTINATION_AIRPORT_LATITUDE",
+        "DESTINATION_AIRPORT_LONGITUDE",
+        "DAY_OF_YEAR_SIN",
+        "DAY_OF_YEAR_COS",
+        "SCHEDULED_DEPARTURE_SIN",
+        "SCHEDULED_ARRIVAL_SIN",
+        "SCHEDULED_ARRIVAL_COS",
+        "DISTANCE_NORMALIZED",
+        "SCHEDULED_TIME_NORMALIZED",
+        "FLIGHT_NUMBER_FREQ"
+    ],
+    "metrics": {
+        "train": {
+            "Accuracy": 0.9272489723945619,
+            "Precision": 0.69221983981373,
+            "Recall": 0.7084917043740573,
+            "F1-Score": 0.7002612581386941,
+            "ROC-AUC": 0.9204238067449886
+        },
+        "test": {
+            "Accuracy": 0.927195910886596,
+            "Precision": 0.6916358270081051,
+            "Recall": 0.7092547188625459,
+            "F1-Score": 0.7003344772164546,
+            "ROC-AUC": 0.9204443145143918
+        },
+        "cv_mean": 0.700228385144194,
+        "cv_std": 0.00069161219167601,
+        "threshold": 0.5
+    },
+    "var_smoothing": 1e-05,
+    "training_time": 0.5538730621337891,
+    "trained_at": 1766845246.9677386
+}

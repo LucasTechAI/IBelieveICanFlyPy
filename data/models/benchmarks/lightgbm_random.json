@@ -1,0 +1,106 @@
+{
+    "metrics": {
+        "train": {
+            "Accuracy": 0.9241013276855238,
+            "Precision": 0.6271498301024956,
+            "Recall": 0.9056686777275013,
+            "F1-Score": 0.7411052965038303,
+            "ROC-AUC": 0.9768888282541902
+        },
+        "test": {
+            "Accuracy": 0.9183000488976912,
+            "Precision": 0.610668002100866,
+            "Recall": 0.8797672536161327,
+            "F1-Score": 0.7209245876582255,
+            "ROC-AUC": 0.9653223185118591
+        },
+        "cv_score": 0.7204837484770983,
+        "best_params": {
+            "subsample": 0.8,
+            "reg_lambda": 0.5,
+            "num_leaves": 63,
+            "n_estimators": 1500,
+            "min_child_samples": 30,
+            "max_depth": 15,
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8
+        },
+        "training_time": 2271.3061742782593,
+        "n_combinations": 5
+    },
+    "grid_results": {
+        "best_params": {
+            "subsample": 0.8,
+            "reg_lambda": 0.5,
+            "num_leaves": 63,
+            "n_estimators": 1500,
+            "min_child_samples": 30,
+            "max_depth": 15,
+            "learning_rate": 0.1,
+            "colsample_bytree": 0.8
+        },
+        "best_score": 0.7204837484770983,
+        "feature_importance": [
+            {
+                "feature": "DAY_OF_YEAR_SIN",
+                "importance": 10217
+            },
+            {
+                "feature": "DAY_OF_YEAR_COS",
+                "importance": 8319
+            },
+            {
+                "feature": "SCHEDULED_TIME_NORMALIZED",
+                "importance": 6614
+            },
+            {
+                "feature": "DEPARTURE_DELAY",
+                "importance": 6205
+            },
+            {
+                "feature": "DISTANCE_NORMALIZED",
+                "importance": 5577
+            },
+            {
+                "feature": "DESTINATION_AIRPORT_LONGITUDE",
+                "importance": 5521
+            },
+            {
+                "feature": "DESTINATION_AIRPORT_LATITUDE",
+                "importance": 5285
+            },
+            {
+                "feature": "ORIGIN_AIRPORT_LONGITUDE",
+                "importance": 5069
+            },
+            {
+                "feature": "TAXI_OUT",
+                "importance": 4517
+            },
+            {
+                "feature": "ORIGIN_AIRPORT_LATITUDE",
+                "importance": 4473
+            },
+            {
+                "feature": "SCHEDULED_ARRIVAL_SIN",
+                "importance": 4244
+            },
+            {
+                "feature": "FLIGHT_NUMBER_FREQ",
+                "importance": 4142
+            },
+            {
+                "feature": "SCHEDULED_ARRIVAL_COS",
+                "importance": 3729
+            },
+            {
+                "feature": "WHEELS_OFF",
+                "importance": 3551
+            },
+            {
+                "feature": "SCHEDULED_DEPARTURE_COS",
+                "importance": 3182
+            }
+        ]
+    }
+}

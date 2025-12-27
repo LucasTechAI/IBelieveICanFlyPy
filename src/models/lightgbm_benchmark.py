@@ -11,7 +11,7 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
     confusion_matrix,
-    make_scorer
+    make_scorer,
 )
 from pandas import read_csv
 from pathlib import Path
@@ -44,15 +44,15 @@ def reduce_memory_usage(df: DataFrame, verbose: bool = True) -> DataFrame:
         DataFrame: DataFrame with reduced memory usage
     """
     start_mem = df.memory_usage(deep=True).sum() / 1024**2
-    
+
     for col in df.columns:
         col_type = df[col].dtype
-        
+
         if col_type != object:
             c_min = df[col].min()
             c_max = df[col].max()
-            
-            if str(col_type)[:3] == 'int':
+
+            if str(col_type)[:3] == "int":
                 if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
                     df[col] = df[col].astype(np.int8)
                 elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
@@ -60,22 +60,27 @@ def reduce_memory_usage(df: DataFrame, verbose: bool = True) -> DataFrame:
                 elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
                     df[col] = df[col].astype(np.int32)
             else:
-                if c_min > np.finfo(np.float32).min and c_max < np.finfo(np.float32).max:
+                if (
+                    c_min > np.finfo(np.float32).min
+                    and c_max < np.finfo(np.float32).max
+                ):
                     df[col] = df[col].astype(np.float32)
-    
+
     end_mem = df.memory_usage(deep=True).sum() / 1024**2
-    
+
     if verbose:
-        logger.info(f'💾 Memory reduced from {start_mem:.2f}MB to {end_mem:.2f}MB '
-                   f'({100 * (start_mem - end_mem) / start_mem:.1f}% reduction)')
-    
+        logger.info(
+            f"💾 Memory reduced from {start_mem:.2f}MB to {end_mem:.2f}MB "
+            f"({100 * (start_mem - end_mem) / start_mem:.1f}% reduction)"
+        )
+
     return df
 
 
 def lgbm_random_grid_search_optimized(
-    X_train: DataFrame, 
-    y_train: Series, 
-    X_test: DataFrame, 
+    X_train: DataFrame,
+    y_train: Series,
+    X_test: DataFrame,
     y_test: Series,
     cv_splits: int = 5,
 ) -> Tuple[LGBMClassifier, Dict, Dict]:
@@ -94,42 +99,42 @@ def lgbm_random_grid_search_optimized(
     logger.info(f"{'='*80}")
     logger.info(f"🚀 LIGHTGBM GRID SEARCH")
     logger.info(f"{'='*80}")
-    
+
     X_train = reduce_memory_usage(X_train, verbose=True)
     X_test = reduce_memory_usage(X_test, verbose=True)
     y_train = y_train.astype(np.int8)
     y_test = y_test.astype(np.int8)
-    
+
     logger.info(f"Features: {X_train.shape[1]}")
     logger.info(f"Samples train: {len(X_train):,}")
     logger.info(f"Samples test: {len(X_test):,}")
     logger.info(f"CV Folds: {cv_splits}")
     logger.info(f"Cores: {N_CORES}")
-    
+
     param_grid = {
-        'n_estimators': [800,  1500, 2000],
-        'learning_rate': [0.05, 0.1],
-        'max_depth': [10, 15],
-        'num_leaves': [31, 63],
-        'min_child_samples': [30],
-        'subsample': [0.8],
-        'colsample_bytree': [0.8],
-        'reg_lambda': [0, 0.5]
+        "n_estimators": [800, 1500, 2000],
+        "learning_rate": [0.05, 0.1],
+        "max_depth": [10, 15],
+        "num_leaves": [31, 63],
+        "min_child_samples": [30],
+        "subsample": [0.8],
+        "colsample_bytree": [0.8],
+        "reg_lambda": [0, 0.5],
     }
-    
+
     lgbm = LGBMClassifier(
         random_state=42,
         n_jobs=1,
         force_col_wise=True,
         verbose=-1,
-        class_weight='balanced',
-        max_bin=255, 
-        min_data_in_bin=3
+        class_weight="balanced",
+        max_bin=255,
+        min_data_in_bin=3,
     )
-    
+
     kf = KFold(n_splits=cv_splits, shuffle=True, random_state=42)
     f1_scorer = make_scorer(f1_score, zero_division=0)
-    
+
     n_iter = 5
     grid_search = RandomizedSearchCV(
         estimator=lgbm,
@@ -140,14 +145,14 @@ def lgbm_random_grid_search_optimized(
         n_jobs=N_CORES,
         verbose=2,
         return_train_score=False,
-        error_score='raise',
-        pre_dispatch='2*n_jobs',
-        random_state=42 
+        error_score="raise",
+        pre_dispatch="2*n_jobs",
+        random_state=42,
     )
-    
+
     logger.info(f"⏳ Starting Grid Search...")
     start_time = time()
-    
+
     try:
         grid_search.fit(X_train, y_train)
         training_time = time() - start_time
@@ -155,11 +160,11 @@ def lgbm_random_grid_search_optimized(
     except Exception as e:
         logger.error(f"❌ Error in Grid Search: {e}")
         raise
-    
+
     best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
     best_score = grid_search.best_score_
-    
+
     logger.info(f"{'='*80}")
     logger.info(f"🏆 BEST HYPERPARAMETERS")
     logger.info(f"{'='*80}")
@@ -167,13 +172,13 @@ def lgbm_random_grid_search_optimized(
         logger.info(f"  {param:25} : {value}")
     logger.info(f"🎯 Best CV F1-Score: {best_score:.4f}")
     logger.info("🔮 Generating predictions...")
-    
+
     y_pred_train = best_model.predict(X_train)
     y_pred_train_proba = best_model.predict_proba(X_train)[:, 1]
-    
+
     y_pred_test = best_model.predict(X_test)
     y_pred_test_proba = best_model.predict_proba(X_test)[:, 1]
-    
+
     metrics = {
         "train": {
             "Accuracy": float(accuracy_score(y_train, y_pred_train)),
@@ -192,40 +197,44 @@ def lgbm_random_grid_search_optimized(
         "cv_score": float(best_score),
         "best_params": best_params,
         "training_time": float(training_time),
-        "n_combinations": len(grid_search.cv_results_['params']),
+        "n_combinations": len(grid_search.cv_results_["params"]),
     }
-    
+
     del y_pred_train, y_pred_train_proba
     collect()
-    
+
     logger.info(f"{'='*80}")
     logger.info(f"📈 MODEL PERFORMANCE")
     logger.info(f"{'='*80}")
-    logger.info(f"{'Metric':<15} {'Train':>15} {'Test':>15} {'Diff':>15} {'Overfit?':>12}")
+    logger.info(
+        f"{'Metric':<15} {'Train':>15} {'Test':>15} {'Diff':>15} {'Overfit?':>12}"
+    )
     logger.info(f"{'-'*80}")
-    
+
     for metric in ["Accuracy", "Precision", "Recall", "F1-Score", "ROC-AUC"]:
         train_val = metrics["train"][metric]
         test_val = metrics["test"][metric]
         diff = abs(train_val - test_val)
         overfit = "⚠️ Yes" if diff > 0.1 else "✅ No"
-        logger.info(f"{metric:<15} {train_val:>15.4f} {test_val:>15.4f} {diff:>15.4f} {overfit:>12}")
-    
+        logger.info(
+            f"{metric:<15} {train_val:>15.4f} {test_val:>15.4f} {diff:>15.4f} {overfit:>12}"
+        )
+
     logger.info(f"{'-'*80}")
     logger.info(f"{'CV F1-Score':<15} {metrics['cv_score']:>15.4f}")
     logger.info(f"{'='*80}")
-    
+
     cm = confusion_matrix(y_test, y_pred_test)
     logger.info(f"📊 Confusion Matrix (Test):")
     logger.info(f"                Predicted")
     logger.info(f"                No Delay  |  Delay")
     logger.info(f"Actual No Delay    {cm[0,0]:>6}  |  {cm[0,1]:>6}")
     logger.info(f"Actual Delay       {cm[1,0]:>6}  |  {cm[1,1]:>6}")
-    
+
     tn, fp, fn, tp = cm.ravel()
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-    
+
     logger.info(f"📊 Additional Metrics:")
     logger.info(f"  True Positives:  {tp:>6}")
     logger.info(f"  True Negatives:  {tn:>6}")
@@ -233,28 +242,31 @@ def lgbm_random_grid_search_optimized(
     logger.info(f"  False Negatives: {fn:>6}")
     logger.info(f"  Sensitivity:     {sensitivity:>6.4f}")
     logger.info(f"  Specificity:     {specificity:>6.4f}")
-    
-    feature_importance = DataFrame({
-        'feature': X_train.columns,
-        'importance': best_model.feature_importances_
-    }).sort_values('importance', ascending=False).head(15)
-    
+
+    feature_importance = (
+        DataFrame(
+            {"feature": X_train.columns, "importance": best_model.feature_importances_}
+        )
+        .sort_values("importance", ascending=False)
+        .head(15)
+    )
+
     logger.info(f"{'='*80}")
     logger.info(f"🔝 TOP 15 FEATURES BY IMPORTANCE")
     logger.info(f"{'='*80}")
     logger.info(feature_importance.to_string(index=False))
-    
+
     grid_results = {
         "best_params": best_params,
         "best_score": float(best_score),
-        "feature_importance": feature_importance.to_dict('records')
+        "feature_importance": feature_importance.to_dict("records"),
     }
-    
+
     del grid_search
     collect()
-    
+
     logger.info(f"{'='*80}")
-    
+
     return best_model, metrics, grid_results
 
 
@@ -268,7 +280,7 @@ def preprocess_flights_data(cleaned_flights_df: DataFrame) -> DataFrame:
     """
     fe = FeatureEngineer()
     fe.set_dataframe(cleaned_flights_df.copy())
-    
+
     COLUMNS_DROP = [
         "DAY_OF_WEEK",
         "DAY_OF_YEAR",
@@ -278,7 +290,7 @@ def preprocess_flights_data(cleaned_flights_df: DataFrame) -> DataFrame:
         "SCHEDULED_ARRIVAL",
         "FLIGHT_NUMBER",
         "DISTANCE",
-        "SCHEDULED_TIME"
+        "SCHEDULED_TIME",
     ]
 
     (
@@ -306,16 +318,18 @@ def preprocess_flights_data(cleaned_flights_df: DataFrame) -> DataFrame:
     )
 
     result_df = fe.get_dataframe()
-    
+
     result_df = reduce_memory_usage(result_df, verbose=False)
-    
+
     del cleaned_flights_df, fe
     collect()
 
     return result_df
 
 
-def split_data(cleaned_flights_df: DataFrame, test_size: float = 0.2, random_state: int = 42) -> Tuple[DataFrame, DataFrame, Series, Series]:
+def split_data(
+    cleaned_flights_df: DataFrame, test_size: float = 0.2, random_state: int = 42
+) -> Tuple[DataFrame, DataFrame, Series, Series]:
     """
     Split data with memory optimization
     Args:
@@ -378,51 +392,42 @@ def main() -> Tuple[LGBMClassifier, Dict, Dict]:
     Returns:
         Tuple[LGBMClassifier, Dict, Dict]: Best model, metrics, and grid results
     """
-    
+
     current_dir = Path(__file__).parent
     root_dir = current_dir.parent.parent
     CLEANED_DATA_PATH = root_dir / "data/interim/cleaned_flights.csv"
-    
+
     logger.info("=" * 80)
     logger.info("🚀 LIGHTGBM RANDOM GRID SEARCH - MEMORY OPTIMIZED")
     logger.info("=" * 80)
-    
+
     logger.info("📂 Loading data...")
     cleaned_flights_df = read_csv(CLEANED_DATA_PATH, low_memory=False)
-    
+
     cleaned_flights_df = reduce_memory_usage(cleaned_flights_df)
-    
+
     cleaned_flights_df["ARRIVAL_DELAY"] = (
         cleaned_flights_df["ARRIVAL_DELAY"] >= 15
     ).astype(np.int8)
-    
+
     logger.info(f"✅ Loaded {len(cleaned_flights_df):,} flights")
-    
+
     X_train, X_test, y_train, y_test = split_data(
         cleaned_flights_df, test_size=0.3, random_state=42
     )
-    
+
     best_model, metrics, grid_results = lgbm_random_grid_search_optimized(
-        X_train, y_train, X_test, y_test,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
         cv_splits=5,
     )
-    
-    output_path = root_dir / "data/models/benchmarks/lightgbm_random_grid_search.json"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    results_to_save = {
-        "metrics": metrics,
-        "grid_results": grid_results
-    }
-    
-    with open(output_path, "w") as f:
-        dump(results_to_save, f, indent=4, default=str)
-    
-    logger.info(f"💾 Results saved to: {output_path}")
+
     logger.info("=" * 80)
     logger.info("✅ COMPLETED!")
     logger.info("=" * 80)
-    
+
     return best_model, metrics, grid_results
 
 

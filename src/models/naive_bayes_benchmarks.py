@@ -29,13 +29,14 @@ basicConfig(
 )
 
 
-
 current_dir = Path(__file__).parent
 root_dir = current_dir.parent.parent
 path.append(str(root_dir))
 from src.etl.feature_engineering import FeatureEngineer
 
-FEATURES_IMPORTANCE_PATH = root_dir / "data/models/benchmarks/lightgbm_feature_importance_nb.csv"
+FEATURES_IMPORTANCE_PATH = (
+    root_dir / "data/models/benchmarks/lightgbm_feature_importance_nb.csv"
+)
 CLEANED_DATA_PATH = root_dir / "data/interim/cleaned_flights.csv"
 
 N_CORES = max(1, cpu_count() - 2)
@@ -63,7 +64,7 @@ def preprocess_flights_data(cleaned_flights_df: DataFrame) -> DataFrame:
         "SCHEDULED_ARRIVAL",
         "FLIGHT_NUMBER",
         "DISTANCE",
-        "SCHEDULED_TIME"
+        "SCHEDULED_TIME",
     ]
 
     (
@@ -96,7 +97,9 @@ def preprocess_flights_data(cleaned_flights_df: DataFrame) -> DataFrame:
     return fe.get_dataframe()
 
 
-def test_1_full_dataset(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series) -> Tuple[GaussianNB, dict, dict]:
+def test_1_full_dataset(
+    X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test1: Train Naive Bayes on the full dataset
     Args:
@@ -108,21 +111,23 @@ def test_1_full_dataset(X_train: DataFrame, y_train: Series, X_test: DataFrame, 
 
         Tuple[GaussianNB, dict, dict]: Trained model, training metrics, testing metrics
     """
-    
+
     logger.info(f"{'='*80}")
     logger.info(f"📊 TESTE 1: NAIVE BAYES - ALL DATABASE")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"Features: {X_train.shape[1]}")
     logger.info(f"Samples train: {len(X_train):,}")
     logger.info(f"Samples test: {len(X_test):,}")
-    
-    return train_naive_bayes(X_train, y_train, X_test, y_test, 
-                            test_name="Test 1 - All Database")
+
+    return train_naive_bayes(
+        X_train, y_train, X_test, y_test, test_name="Test 1 - All Database"
+    )
 
 
-
-def test_2_top_features_lightgbm(X_train, y_train, X_test, y_test, top_n=15) -> Tuple[GaussianNB, dict, dict]:
+def test_2_top_features_lightgbm(
+    X_train, y_train, X_test, y_test, top_n=15
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test 2: Select top N features based on LightGBM feature importance
     Args:
@@ -137,9 +142,9 @@ def test_2_top_features_lightgbm(X_train, y_train, X_test, y_test, top_n=15) -> 
     logger.info(f"{'='*80}")
     logger.info(f"📊 TEST 2: TOP {top_n} FEATURES - LIGHTGBM FEATURE IMPORTANCE")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"Extracting feature importances using LightGBM...")
-    
+
     lgbm = LGBMClassifier(
         n_estimators=1000,
         learning_rate=0.1,
@@ -147,9 +152,9 @@ def test_2_top_features_lightgbm(X_train, y_train, X_test, y_test, top_n=15) -> 
         random_state=42,
         verbose=1,
         n_jobs=N_CORES,
-        force_col_wise=True
+        force_col_wise=True,
     )
-    
+
     start_time = time()
     lgbm.fit(X_train, y_train)
     lgbm_time = time() - start_time
@@ -162,41 +167,53 @@ def test_2_top_features_lightgbm(X_train, y_train, X_test, y_test, top_n=15) -> 
     precision_score_val = precision_score(y_test, y_pred)
     f1_score_val = f1_score(y_test, y_pred)
 
-    logger.info(f"💡 LightGBM Performance (using all features):"
-          f"  Accuracy : {accuracy:.4f}"
-          f"  Precision: {precision_score_val:.4f}"
-          f"  Recall   : {recall_score_val:.4f}"
-          f"  ROC-AUC  : {roc:.4f}"
-          f"  F1-Score : {f1_score_val:.4f}")
-    
-    feature_importance = DataFrame({
-        'feature': X_train.columns,
-        'importance': lgbm.feature_importances_
-    }).sort_values('importance', ascending=False)
-    
+    logger.info(
+        f"💡 LightGBM Performance (using all features):"
+        f"  Accuracy : {accuracy:.4f}"
+        f"  Precision: {precision_score_val:.4f}"
+        f"  Recall   : {recall_score_val:.4f}"
+        f"  ROC-AUC  : {roc:.4f}"
+        f"  F1-Score : {f1_score_val:.4f}"
+    )
+
+    feature_importance = DataFrame(
+        {"feature": X_train.columns, "importance": lgbm.feature_importances_}
+    ).sort_values("importance", ascending=False)
+
     logger.info(f"✅ LightGBM trained in {lgbm_time:.2f}s")
     logger.info(f"🏆 Top {top_n} Features by Importance:")
     logger.info(feature_importance.head(top_n).to_string(index=False))
 
     feature_importance.to_csv(FEATURES_IMPORTANCE_PATH, index=False)
-    
-    top_features = feature_importance.head(top_n)['feature'].tolist()
-    
+
+    top_features = feature_importance.head(top_n)["feature"].tolist()
+
     X_train_top = X_train[top_features]
     X_test_top = X_test[top_features]
-    
+
     logger.info(f"📊 Reduced Dataset:")
     logger.info(f"  Features: {len(top_features)}")
     logger.info(f"  Samples train: {len(X_train_top):,}")
-    
+
     del lgbm
     collect()
-    
-    return train_naive_bayes(X_train_top, y_train, X_test_top, y_test,
-                            test_name=f"Test 2 - Top {top_n} Features (LightGBM)")
+
+    return train_naive_bayes(
+        X_train_top,
+        y_train,
+        X_test_top,
+        y_test,
+        test_name=f"Test 2 - Top {top_n} Features (LightGBM)",
+    )
 
 
-def test_3_high_correlation(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series, threshold:int=0.6) -> Tuple[GaussianNB, dict, dict]:
+def test_3_high_correlation(
+    X_train: DataFrame,
+    y_train: Series,
+    X_test: DataFrame,
+    y_test: Series,
+    threshold: int = 0.6,
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test 3: Select features with correlation > threshold
     Args:
@@ -211,14 +228,16 @@ def test_3_high_correlation(X_train: DataFrame, y_train: Series, X_test: DataFra
     logger.info(f"{'='*80}")
     logger.info(f"📊 TEST 3: FEATURES HIGH CORRELATION > |{threshold}|")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"🔍 Calculating correlations with target...")
-    
+
     correlations = X_train.corrwith(y_train).abs().sort_values(ascending=False)
     high_corr_features = correlations[correlations > threshold].index.tolist()
-    
-    logger.info(f"📊 Features with correlation > |{threshold}|: {len(high_corr_features)}")
-    
+
+    logger.info(
+        f"📊 Features with correlation > |{threshold}|: {len(high_corr_features)}"
+    )
+
     if len(high_corr_features) == 0:
         logger.warning(f"⚠️  No features with correlation > |{threshold}|")
         logger.info(f"📉 Top 15 correlations found:")
@@ -229,15 +248,22 @@ def test_3_high_correlation(X_train: DataFrame, y_train: Series, X_test: DataFra
         logger.info(f"🏆 Selected features:")
         for feat in high_corr_features:
             logger.info(f"  {feat}: {correlations[feat]:.4f}")
-    
+
     X_train_corr = X_train[high_corr_features]
     X_test_corr = X_test[high_corr_features]
-    
-    return train_naive_bayes(X_train_corr, y_train, X_test_corr, y_test,
-                            test_name=f"Test 3 - Correlation > |{threshold}|")
+
+    return train_naive_bayes(
+        X_train_corr,
+        y_train,
+        X_test_corr,
+        y_test,
+        test_name=f"Test 3 - Correlation > |{threshold}|",
+    )
 
 
-def test_4_smote_full(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series) -> Tuple[GaussianNB, dict, dict]:
+def test_4_smote_full(
+    X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test 4: SMOTE with sampling_strategy='auto' (full balancing 1:1)
     Args:
@@ -251,32 +277,39 @@ def test_4_smote_full(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
     logger.info(f"{'='*80}")
     logger.info(f"📊 TEST 4: SMOTE - FULL BALANCING (1:1)")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"⚖️  Applying SMOTE...")
-    smote = SMOTE(sampling_strategy='auto', random_state=42)
-    
+    smote = SMOTE(sampling_strategy="auto", random_state=42)
+
     original_counts = Series(y_train).value_counts()
     logger.info(f"📊 Original distribution:")
     logger.info(f"  Class 0: {original_counts[0]:,}")
     logger.info(f"  Class 1: {original_counts[1]:,}")
     logger.info(f"  Ratio: {original_counts[0]/original_counts[1]:.2f}:1")
-    
+
     start_time = time()
     X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)
     smote_time = time() - start_time
-    
+
     balanced_counts = Series(y_train_balanced).value_counts()
     logger.info(f"📊 Balanced distribution:")
     logger.info(f"  Class 0: {balanced_counts[0]:,}")
     logger.info(f"  Class 1: {balanced_counts[1]:,}")
     logger.info(f"  Ratio: {balanced_counts[0]/balanced_counts[1]:.2f}:1")
     logger.info(f"  Time: {smote_time:.2f}s")
-    
-    return train_naive_bayes(X_train_balanced, y_train_balanced, X_test, y_test,
-                            test_name="Test 4 - SMOTE (1:1)")
+
+    return train_naive_bayes(
+        X_train_balanced,
+        y_train_balanced,
+        X_test,
+        y_test,
+        test_name="Test 4 - SMOTE (1:1)",
+    )
 
 
-def test_5_smote_30_percent(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series) -> Tuple[GaussianNB, dict, dict]:
+def test_5_smote_30_percent(
+    X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test 5: SMOTE with sampling_strategy=0.3 (30% of majority class)
     Args:
@@ -290,32 +323,39 @@ def test_5_smote_30_percent(X_train: DataFrame, y_train: Series, X_test: DataFra
     logger.info(f"{'='*80}")
     logger.info(f"📊 TEST 5: SMOTE - 30% OF MAJORITY CLASS")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"⚖️  Applying SMOTE (30%)...")
     smote = SMOTE(sampling_strategy=0.3, random_state=42)
-    
+
     original_counts = Series(y_train).value_counts()
     logger.info(f"📊 Original distribution:")
     logger.info(f"  Class 0: {original_counts[0]:,}")
     logger.info(f"  Class 1: {original_counts[1]:,}")
     logger.info(f"  Ratio: {original_counts[0]/original_counts[1]:.2f}:1")
-    
+
     start_time = time()
     X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)
     smote_time = time() - start_time
-    
+
     balanced_counts = Series(y_train_balanced).value_counts()
     logger.info(f"📊 Balanced distribution:")
     logger.info(f"  Class 0: {balanced_counts[0]:,}")
     logger.info(f"  Class 1: {balanced_counts[1]:,}")
     logger.info(f"  Ratio: {balanced_counts[0]/balanced_counts[1]:.2f}:1")
     logger.info(f"  Time: {smote_time:.2f}s")
-    
-    return train_naive_bayes(X_train_balanced, y_train_balanced, X_test, y_test,
-                            test_name="Test 5 - SMOTE (30%)")
+
+    return train_naive_bayes(
+        X_train_balanced,
+        y_train_balanced,
+        X_test,
+        y_test,
+        test_name="Test 5 - SMOTE (30%)",
+    )
 
 
-def test_6_random_oversample(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series) -> Tuple[GaussianNB, dict, dict]:
+def test_6_random_oversample(
+    X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Test 6: Random Oversampling to equalize classes
     Args:
@@ -329,20 +369,20 @@ def test_6_random_oversample(X_train: DataFrame, y_train: Series, X_test: DataFr
     logger.info(f"{'='*80}")
     logger.info(f"📊 TEST 6: RANDOM OVERSAMPLING - EQUALIZE CLASSES")
     logger.info(f"{'='*80}")
-    
+
     logger.info(f"⚖️  Applying Random Oversampling...")
-    ros = RandomOverSampler(sampling_strategy='auto', random_state=42)
-    
+    ros = RandomOverSampler(sampling_strategy="auto", random_state=42)
+
     original_counts = Series(y_train).value_counts()
     logger.info(f"📊 Original distribution:")
     logger.info(f"  Class 0: {original_counts[0]:,}")
     logger.info(f"  Class 1: {original_counts[1]:,}")
     logger.info(f"  Ratio: {original_counts[0]/original_counts[1]:.2f}:1")
-    
+
     start_time = time()
     X_train_balanced, y_train_balanced = ros.fit_resample(X_train, y_train)
     ros_time = time() - start_time
-    
+
     balanced_counts = Series(y_train_balanced).value_counts()
     logger.info(f"📊 Balanced distribution:")
     logger.info(f"  Class 0: {balanced_counts[0]:,}")
@@ -350,13 +390,26 @@ def test_6_random_oversample(X_train: DataFrame, y_train: Series, X_test: DataFr
     logger.info(f"  Ratio: {balanced_counts[0]/balanced_counts[1]:.2f}:1")
     logger.info(f"  Time: {ros_time:.2f}s")
     logger.info(f"💡 MMethod: Random duplication of minority class samples")
-    
-    return train_naive_bayes(X_train_balanced, y_train_balanced, X_test, y_test,
-                            test_name="Test 6 - Random Oversampling")
+
+    return train_naive_bayes(
+        X_train_balanced,
+        y_train_balanced,
+        X_test,
+        y_test,
+        test_name="Test 6 - Random Oversampling",
+    )
 
 
-def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_test: Series, test_name: str="Naive Bayes", 
-                     n_iter: int=9, cv_splits: int=5, threshold: float=0.5) -> Tuple[GaussianNB, dict, dict]:
+def train_naive_bayes(
+    X_train: DataFrame,
+    y_train: Series,
+    X_test: DataFrame,
+    y_test: Series,
+    test_name: str = "Naive Bayes",
+    n_iter: int = 9,
+    cv_splits: int = 5,
+    threshold: float = 0.5,
+) -> Tuple[GaussianNB, dict, dict]:
     """
     Train Naive Bayes with RandomizedSearchCV
     Args:
@@ -373,7 +426,7 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
     logger.info(f"🚀 TRAINING: {test_name}")
     logger.info(f"{'='*80}")
     logger.info(f"CV Folds: {cv_splits} | Random iterations: {n_iter}")
-    
+
     naive_bayes_params = {
         "var_smoothing": [1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
     }
@@ -411,21 +464,21 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
 
     y_pred_train = best_model.predict(X_train)
     y_pred_test = best_model.predict(X_test)
-    
+
     y_pred_train_proba = best_model.predict_proba(X_train)[:, 1]
     y_pred_test_proba = best_model.predict_proba(X_test)[:, 1]
 
+    logger.info(f"🔍 Threshold Analysis: {threshold}")
 
-    logger.info(f"🔍 Threshold Analysis: {threshold}" )
-    
     y_pred_test = (y_pred_test_proba >= threshold).astype(int)
     fbr, tpr, thresholds = roc_curve(y_test, y_pred_test_proba)
     roc_auc = roc_auc_score(y_test, y_pred_test_proba)
 
-    logger.info(f"Median threshold (test): {median(thresholds):.4f} | AUC: {roc_auc:.4f}")
+    logger.info(
+        f"Median threshold (test): {median(thresholds):.4f} | AUC: {roc_auc:.4f}"
+    )
     logger.info(f"Mean threshold (test): {mean(thresholds):.4f}")
     logger.info(f"Custom threshold (test): {threshold:.4f}")
-
 
     metrics = {
         "train": {
@@ -450,17 +503,21 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
 
     logger.info(f"{'='*80}")
     logger.info(f"📈 MODEL PERFORMANCE")
-    logger.info(f"{'='*80}")   
-    logger.info(f"{'Metric':<15} {'Train':>15} {'Test':>15} {'Diff':>15} {'Overfit?':>12}")
+    logger.info(f"{'='*80}")
+    logger.info(
+        f"{'Metric':<15} {'Train':>15} {'Test':>15} {'Diff':>15} {'Overfit?':>12}"
+    )
     logger.info(f"{'-'*80}")
-    
+
     for metric in ["Accuracy", "Precision", "Recall", "F1-Score", "ROC-AUC"]:
         train_val = metrics["train"][metric]
         test_val = metrics["test"][metric]
         diff = abs(train_val - test_val)
         overfit = "⚠️ Yes" if diff > 0.1 else "✅ No"
-        logger.info(f"{metric:<15} {train_val:>15.4f} {test_val:>15.4f} {diff:>15.4f} {overfit:>12}")
-    
+        logger.info(
+            f"{metric:<15} {train_val:>15.4f} {test_val:>15.4f} {diff:>15.4f} {overfit:>12}"
+        )
+
     logger.info(f"{'-'*80}")
     logger.info(f"{'CV F1-Score':<15} {metrics['cv_score']:>15.4f}")
     logger.info(f"{'='*80}")
@@ -471,18 +528,22 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
     logger.info(f"                Sem Atraso  |  Com Atraso")
     logger.info(f"Real Sem Atraso    {cm[0,0]:>6}  |  {cm[0,1]:>6}")
     logger.info(f"Real Com Atraso    {cm[1,0]:>6}  |  {cm[1,1]:>6}")
-    
+
     tn, fp, fn, tp = cm.ravel()
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-    
+
     logger.info(f"📊 Additional Metrics:")
     logger.info(f"  True Positives:  {tp:>6} (Atrasos corretamente previstos)")
     logger.info(f"  True Negatives:  {tn:>6} (Sem atraso corretamente previsto)")
     logger.info(f"  False Positives: {fp:>6} (Falso alarme de atraso)")
     logger.info(f"  False Negatives: {fn:>6} (Atrasos não detectados)")
-    logger.info(f"  Sensitivity:     {sensitivity:>6.4f} (Taxa de Verdadeiros Positivos)")
-    logger.info(f"  Specificity:     {specificity:>6.4f} (Taxa de Verdadeiros Negativos)")
+    logger.info(
+        f"  Sensitivity:     {sensitivity:>6.4f} (Taxa de Verdadeiros Positivos)"
+    )
+    logger.info(
+        f"  Specificity:     {specificity:>6.4f} (Taxa de Verdadeiros Negativos)"
+    )
 
     logger.info(f"{'='*80}")
 
@@ -490,7 +551,7 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
         "thresholds": thresholds.tolist(),
         "fpr": fbr.tolist(),
         "tpr": tpr.tolist(),
-        "auc": roc_auc
+        "auc": roc_auc,
     }
 
     del random_search
@@ -499,8 +560,9 @@ def train_naive_bayes(X_train: DataFrame, y_train: Series, X_test: DataFrame, y_
     return best_model, metrics, roc_data
 
 
-
-def split_data(cleaned_flights_df: DataFrame, test_size: float = 0.2, random_state:int=42):
+def split_data(
+    cleaned_flights_df: DataFrame, test_size: float = 0.2, random_state: int = 42
+):
     """
     Split the cleaned flights data into training and testing sets.
     Args:
@@ -557,6 +619,7 @@ def split_data(cleaned_flights_df: DataFrame, test_size: float = 0.2, random_sta
 
     return X_train_processed, X_test_processed, y_train, y_test
 
+
 def main():
     benchmark_results = {}
 
@@ -564,12 +627,12 @@ def main():
     logger.info("🚀 BENCHMARK: NAIVE BAYES - 6 TESTS")
     logger.info("=" * 80)
     logger.info("📂 Load Database")
-    
+
     cleaned_flights_df = read_csv(CLEANED_DATA_PATH)
     cleaned_flights_df["ARRIVAL_DELAY"] = (
         cleaned_flights_df["ARRIVAL_DELAY"] >= 15
     ).astype(int)
-    
+
     logger.info(f"✅ Loaded {len(cleaned_flights_df):,} flights")
     logger.info(f"📊 Target: ARRIVAL_DELAY >= 15 min = 1 (Delay)")
     logger.info(f"   Class 0: {(cleaned_flights_df['ARRIVAL_DELAY']==0).sum():,}")
@@ -579,133 +642,133 @@ def main():
         cleaned_flights_df, test_size=0.3, random_state=42
     )
 
-    
     model_1, metrics_1, roc_1 = test_1_full_dataset(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy()
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy()
     )
     benchmark_results["teste_1_base_completa"] = {
         "description": "All dataset - Baseline",
         "metrics": metrics_1,
-        "roc_curve": roc_1
+        "roc_curve": roc_1,
     }
-    del model_1; collect()
+    del model_1
+    collect()
 
-    
     model_2, metrics_2, roc_2 = test_2_top_features_lightgbm(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy(),
-        top_n=15
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy(), top_n=15
     )
     benchmark_results["teste_2_top_15_lightgbm"] = {
         "description": "Top 15 features - LightGBM importance",
         "metrics": metrics_2,
-        "roc_curve": roc_2
+        "roc_curve": roc_2,
     }
-    del model_2; collect()
+    del model_2
+    collect()
 
-    
     model_3, metrics_3, roc_3 = test_3_high_correlation(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy(),
-        threshold=0.6
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy(), threshold=0.6
     )
     benchmark_results["teste_3_correlacao"] = {
         "description": "Features com correlação > |0.6|",
         "metrics": metrics_3,
-        "roc_curve": roc_3
+        "roc_curve": roc_3,
     }
-    del model_3; collect()
+    del model_3
+    collect()
 
-    
     model_4, metrics_4, roc_4 = test_4_smote_full(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy()
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy()
     )
     benchmark_results["teste_4_smote_full"] = {
         "description": "SMOTE - Balanceamento completo 1:1",
         "metrics": metrics_4,
-        "roc_curve": roc_4
+        "roc_curve": roc_4,
     }
-    del model_4; collect()
+    del model_4
+    collect()
 
-    
     model_5, metrics_5, roc_5 = test_5_smote_30_percent(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy()
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy()
     )
     benchmark_results["teste_5_smote_30"] = {
         "description": "SMOTE - 30% da classe majoritária",
         "metrics": metrics_5,
-        "roc_curve": roc_5
+        "roc_curve": roc_5,
     }
-    del model_5; collect()
+    del model_5
+    collect()
 
-    
     model_6, metrics_6, roc_6 = test_6_random_oversample(
-        X_train.copy(), y_train.copy(), 
-        X_test.copy(), y_test.copy()
+        X_train.copy(), y_train.copy(), X_test.copy(), y_test.copy()
     )
     benchmark_results["teste_6_random_oversample"] = {
         "description": "Random Oversampling - Igualar classes",
         "metrics": metrics_6,
-        "roc_curve": roc_6
+        "roc_curve": roc_6,
     }
-    del model_6; collect()
+    del model_6
+    collect()
 
     logger.info("=" * 80)
     logger.info("📊 FINAL COMPARISON - 6 NAIVE BAYES TESTS")
     logger.info("=" * 80)
-    
-    comparison_df = DataFrame([
-        {
-            "Teste": results["description"],
-            "F1-Score": results["metrics"]["test"]["F1-Score"],
-            "Recall": results["metrics"]["test"]["Recall"],
-            "Precision": results["metrics"]["test"]["Precision"],
-            "ROC-AUC": results["metrics"]["test"]["ROC-AUC"],
-            "Accuracy": results["metrics"]["test"]["Accuracy"],
-            "Tempo (s)": results["metrics"]["training_time"],
-        }
-        for _, results in benchmark_results.items()
-    ])
-    
+
+    comparison_df = DataFrame(
+        [
+            {
+                "Teste": results["description"],
+                "F1-Score": results["metrics"]["test"]["F1-Score"],
+                "Recall": results["metrics"]["test"]["Recall"],
+                "Precision": results["metrics"]["test"]["Precision"],
+                "ROC-AUC": results["metrics"]["test"]["ROC-AUC"],
+                "Accuracy": results["metrics"]["test"]["Accuracy"],
+                "Tempo (s)": results["metrics"]["training_time"],
+            }
+            for _, results in benchmark_results.items()
+        ]
+    )
+
     comparison_df = comparison_df.sort_values("F1-Score", ascending=False)
-    comparison_df.insert(0, 'Rank', range(1, len(comparison_df) + 1))
-    
+    comparison_df.insert(0, "Rank", range(1, len(comparison_df) + 1))
+
     logger.info("🏆 Ranking by F1-Score (Test):")
     logger.info("=" * 40)
     logger.info(comparison_df.to_string(index=False))
     logger.info("=" * 40)
-    
+
     best_test = comparison_df.iloc[0]
     logger.info(f"🥇 MELHOR TESTE: {best_test['Teste']}")
     logger.info(f"   F1-Score: {best_test['F1-Score']:.4f}")
     logger.info(f"   Recall:   {best_test['Recall']:.4f}")
     logger.info(f"   Precision: {best_test['Precision']:.4f}")
     logger.info(f"   ROC-AUC:  {best_test['ROC-AUC']:.4f}")
-    
+
     logger.info(f"📊 TRADE-OFF ANALYSIS:")
-    logger.info(f"   Best F1-Score:  {comparison_df.iloc[0]['Teste']} ({comparison_df.iloc[0]['F1-Score']:.4f})")
-    logger.info(f"   Best Recall:    {comparison_df.loc[comparison_df['Recall'].idxmax()]['Teste']} ({comparison_df['Recall'].max():.4f})")
-    logger.info(f"   Best Precision: {comparison_df.loc[comparison_df['Precision'].idxmax()]['Teste']} ({comparison_df['Precision'].max():.4f})")
-    logger.info(f"   Best ROC-AUC:   {comparison_df.loc[comparison_df['ROC-AUC'].idxmax()]['Teste']} ({comparison_df['ROC-AUC'].max():.4f})")
-    logger.info(f"   Fastest:        {comparison_df.loc[comparison_df['Tempo (s)'].idxmin()]['Teste']} ({comparison_df['Tempo (s)'].min():.2f}s)")
-    
+    logger.info(
+        f"   Best F1-Score:  {comparison_df.iloc[0]['Teste']} ({comparison_df.iloc[0]['F1-Score']:.4f})"
+    )
+    logger.info(
+        f"   Best Recall:    {comparison_df.loc[comparison_df['Recall'].idxmax()]['Teste']} ({comparison_df['Recall'].max():.4f})"
+    )
+    logger.info(
+        f"   Best Precision: {comparison_df.loc[comparison_df['Precision'].idxmax()]['Teste']} ({comparison_df['Precision'].max():.4f})"
+    )
+    logger.info(
+        f"   Best ROC-AUC:   {comparison_df.loc[comparison_df['ROC-AUC'].idxmax()]['Teste']} ({comparison_df['ROC-AUC'].max():.4f})"
+    )
+    logger.info(
+        f"   Fastest:        {comparison_df.loc[comparison_df['Tempo (s)'].idxmin()]['Teste']} ({comparison_df['Tempo (s)'].min():.2f}s)"
+    )
+
     output_path = root_dir / "data/models/benchmarks/naive_bayes.json"
     with open(output_path, "w") as f:
         dump(benchmark_results, f, indent=4, default=str)
 
-    comparison_csv_path = root_dir / "data/models/benchmarks/naive_bayes.csv"
-    comparison_df.to_csv(comparison_csv_path, index=False)
-
     logger.info(f"💾 Results:")
     logger.info(f"   JSON: {output_path}")
-    logger.info(f"   CSV:  {comparison_csv_path}")
     logger.info("=" * 80)
     logger.info("✅ ALL DONE!")
     logger.info("=" * 80)
 
+
 if __name__ == "__main__":
     main()
-    

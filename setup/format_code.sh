@@ -16,12 +16,12 @@ echo "📂 Formatting files in src/..."
 black src/ --exclude '/(\.git|\.venv|venv|__pycache__|\.ipynb_checkpoints)/'
 
 echo ""
-echo "📂 Formatting files in test/..."
-black test/ --exclude '/(\.git|\.venv|venv|__pycache__|\.ipynb_checkpoints)/' 2>/dev/null || echo "⚠️  Directory test/ not found"
+echo "📂 Formatting files in setup/..."
+black setup/ --exclude '/(\.git|\.venv|venv|__pycache__|\.ipynb_checkpoints)/' 2>/dev/null || echo "⚠️  Directory setup/ not found"
 
 echo ""
 echo "📊 Checking formatting..."
-black --check src/ test/ --exclude '/(\.git|\.venv|venv|__pycache__|\.ipynb_checkpoints)/' 2>/dev/null
+black --check src/ setup/ --exclude '/(\.git|\.venv|venv|__pycache__|\.ipynb_checkpoints)/' 2>/dev/null
 
 echo ""
 echo "✅ Formatting completed!"

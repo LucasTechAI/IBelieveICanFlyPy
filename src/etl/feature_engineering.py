@@ -251,24 +251,20 @@ class FeatureEngineer:
             raise ValueError(
                 "DataFrame does not exist. Load data before applying transformations."
             )
-        
+
         if col not in self.df.columns:
             raise ValueError(f"Column '{col}' not found in DataFrame.")
-        
+
         encoder = OneHotEncoder(sparse_output=False)
         encoded = encoder.fit_transform(self.df[[col]])
 
         feature_names = encoder.get_feature_names_out([col])
-        
+
         logger.info(f"Categories found: {encoder.categories_[0]}")
-        encoded_df = DataFrame(
-            encoded, 
-            columns=feature_names,
-            index=self.df.index
-        )
-        
+        encoded_df = DataFrame(encoded, columns=feature_names, index=self.df.index)
+
         self.encoders[col] = encoder
-        
+
         self.df = concat([self.df, encoded_df], axis=1)
         self.df.drop(columns=[col], inplace=True)
 
@@ -389,4 +385,3 @@ class FeatureEngineer:
             f"-> Dropped {initial_count - final_count} outlier rows from column: {col}"
         )
         return self
-

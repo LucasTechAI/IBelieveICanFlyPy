@@ -2,6 +2,9 @@
 
 A machine learning project for flight delay prediction using various classification algorithms, including Naive Bayes and LightGBM models.
 
+## Pitch on YouTube
+[![Watch Pitch - IBelieveICanFlyPy](https://img.youtube.com/vi/aNVwI2SbRMI/maxresdefault.jpg)](https://youtu.be/aNVwI2SbRMI?si=htA1ZAYuya5872Tr)
+
 ## 📋 Table of Contents
 
 - [Project Overview](#project-overview)
@@ -211,6 +214,7 @@ For questions, suggestions, or issues, please feel free to reach out:
 - 💼 **LinkedIn**: [Lucas Mendes Barbosa](https://www.linkedin.com/in/lucas-mendes-barbosa/)
 - 📧 **Email**: lucas.mendestech@gmail.com
 - 🎵 **Portfolio**: [musicmoodai.com.br](https://musicmoodai.com.br/)
+- 📊 **Presentation on Canva**: [Canvas](https://www.canva.com/design/DAG4zFchMHw/QD4rwinUKw_MEUCg3ZtSpg/edit?utm_content=DAG4zFchMHw&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 
 ---
